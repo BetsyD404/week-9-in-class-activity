@@ -1,11 +1,90 @@
 ---
+Author: "Betsiet Delelegn"
 title: "week-9-R"
 ---
 
-## Quarto
+## In-class Activity Week 9
 
-Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
+#### Required Packages
 
 ```{r}
-1 + 1
+library(DBI)
+library(dbplyr)
+library(tidyverse)
+```
+
+#### Activity 2
+
+```{r}
+requireNamespace("RPostgreSQL")
+db_conn <- dbConnect(dbDriver('PostgreSQL'),
+                     host = "dkepplin-stat463.cec.gmu.edu",
+                     dbname = "stat507cherry",
+                     user = "stat507learner",
+                     password = "learningSQLinSTAT507!")
+str(db_conn)
+
+dbListObjects(db_conn)
+dbListFields(db_conn, "cherry_locations")
+dbListFields(db_conn, "bloom_dates")
+dbListFields(db_conn, "weather_stations")
+dbListFields(db_conn, "weather_data")
+
+```
+
+The tables cherry_location, bloom_dates and weather_stations have location_id that can link them all together. The weather_data can be connected to weather_stations using noaa_station_id.
+
+#### Activity 3
+
+```{r}
+cherry_locations_db <- tbl(db_conn, "cherry_locations")
+bloom_dates_db <- tbl(db_conn, "bloom_dates")
+
+cherry_locations_db |> 
+  filter(country == "USA")
+
+cherry_locations_db |> 
+  mutate(country = if_else(country == "USA", "U.S.A.", country)) |> 
+  filter(country == "U.S.A.") |>
+  show_query()
+```
+
+The query gets all column from cherry-location and within the sub-query it replaces USA with U.S.A but leaves other countries unchanged.
+
+#### Activity 4
+
+```{r}
+bloom_dates_db <- tbl(db_conn, "bloom_dates")
+weather_stations_db <- tbl(db_conn, "weather_stations")
+
+bloom_dates_db|>
+  inner_join(weather_stations_db, by = "location_id")|>
+  show_query()
+```
+
+Here the query is fully processed on the database server.
+
+#### Activity 5
+
+```{r}
+weather_data_db <- tbl(db_conn, "weather_data")
+
+bloom_dates_db |>
+  inner_join(weather_stations_db, by = "location_id") |>
+  inner_join(weather_data_db, by = "noaa_station_id") |>
+  group_by(location_id, year.x) |>
+  summarise(
+    min(cldd), mean(cldd), max(cldd),
+    min(dp01), mean(dp01), max(dp01),
+    min(dt32), mean(dt32), max(dt32),
+    min(dx32), mean(dx32), max(dx32),
+    min(dx70), mean(dx70), max(dx70),
+    min(htdd), mean(htdd), max(htdd),
+    min(prcp), mean(prcp), max(prcp),
+    min(tavg), mean(tavg), max(tavg),
+    min(tmax), mean(tmax), max(tmax),
+    min(tmin), mean(tmin), max(tmin),
+  
+  ) |> 
+  show_query()
 ```
